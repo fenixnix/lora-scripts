@@ -91,14 +91,23 @@
             Schema.object({}),
         ]),
 
-        SAVE_SETTINGS: Schema.object({
-            output_name: Schema.string().default("aki").description("模型保存名称"),
-            output_dir: Schema.string().role('filepicker', { type: "folder" }).default("./output").description("模型保存文件夹"),
-            save_model_as: Schema.union(["safetensors", "pt", "ckpt"]).default("safetensors").description("模型保存格式"),
-            save_precision: Schema.union(["fp16", "float", "bf16"]).default("fp16").description("模型保存精度"),
-            save_every_n_epochs: Schema.number().default(2).description("每 N epoch（轮）自动保存一次模型"),
-            save_state: Schema.boolean().description("保存训练状态 配合 `resume` 参数可以继续从某个状态训练"),
-        }).description("保存设置"),
+        SAVE_SETTINGS: Schema.intersect([
+            Schema.object({
+                output_name: Schema.string().default("aki").description("模型保存名称"),
+                output_dir: Schema.string().role('filepicker', { type: "folder" }).default("./output").description("模型保存文件夹"),
+                save_model_as: Schema.union(["safetensors", "pt", "ckpt"]).default("safetensors").description("模型保存格式"),
+                save_precision: Schema.union(["fp16", "float", "bf16"]).default("fp16").description("模型保存精度"),
+                save_every_n_epochs: Schema.number().default(2).description("每 N epoch（轮）自动保存一次模型"),
+                save_state: Schema.boolean().default(false).description("保存训练状态 配合 `resume` 参数可以继续从某个状态训练"),
+            }),
+            Schema.union([
+                Schema.object({
+                    save_state: Schema.const(true).required(),
+                    save_last_n_epochs_state: Schema.number().min(1).description("仅保存最后 n epoch 的训练状态"),
+                }),
+                Schema.object({})
+            ])
+        ]).description("保存设置"),
 
         LR_OPTIMIZER: Schema.intersect([
             Schema.object({
@@ -129,6 +138,7 @@
                     "AdamW",
                     "AdamW8bit",
                     "PagedAdamW8bit",
+                    "RAdamScheduleFree",
                     "Lion",
                     "Lion8bit",
                     "PagedLion8bit",
@@ -141,7 +151,8 @@
                     "DAdaptLion",
                     "DAdaptSGD",
                     "AdaFactor",
-                    "Prodigy"
+                    "Prodigy",
+                    "prodigyplus.ProdigyPlusScheduleFree"
                 ]).default("AdamW8bit").description("优化器设置"),
                 min_snr_gamma: Schema.number().step(0.1).description("最小信噪比伽马值, 如果启用推荐为 5"),
             }),
@@ -168,7 +179,14 @@
             Schema.union([
                 Schema.object({
                     enable_preview: Schema.const(true).required(),
-                    sample_prompts: Schema.string().role('textarea').default(SAMPLE_PROMPTS_DEFAULT).description(SAMPLE_PROMPTS_DESCRIPTION),
+                    randomly_choice_prompt: Schema.boolean().default(false).description('随机选择预览图 Prompt'),
+                    positive_prompts: Schema.string().role('textarea').default('masterpiece, best quality, 1girl, solo').description("Prompt"),
+                    negative_prompts: Schema.string().role('textarea').default('lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts,signature, watermark, username, blurry').description("Negative Prompt"),
+                    sample_width: Schema.number().default(512).description('预览图宽'),
+                    sample_height: Schema.number().default(512).description('预览图高'),
+                    sample_cfg: Schema.number().min(1).max(30).default(7).description('CFG Scale'),
+                    sample_seed: Schema.number().default(2333).description('种子'),
+                    sample_steps: Schema.number().min(1).max(300).default(24).description('迭代步数'),
                     sample_sampler: Schema.union(["ddim", "pndm", "lms", "euler", "euler_a", "heun", "dpm_2", "dpm_2_a", "dpmsolver", "dpmsolver++", "dpmsingle", "k_lms", "k_euler", "k_euler_a", "k_dpm_2", "k_dpm_2_a"]).default("euler_a").description("生成预览图所用采样器"),
                     sample_every_n_epochs: Schema.number().default(2).description("每 N 个 epoch 生成一次预览图"),
                 }),
@@ -192,6 +210,12 @@
                 Schema.object({}),
             ]),
         ]),
+
+        NOISE_SETTINGS: Schema.object({
+            noise_offset: Schema.number().step(0.01).description("在训练中添加噪声偏移来改良生成非常暗或者非常亮的图像，如果启用推荐为 0.1"),
+            multires_noise_iterations: Schema.number().step(1).description("多分辨率（金字塔）噪声迭代次数 推荐 6-10。无法与 noise_offset 一同启用"),
+            multires_noise_discount: Schema.number().step(0.01).description("多分辨率（金字塔）衰减率 推荐 0.3-0.8，须同时与上方参数 multires_noise_iterations 一同启用"),
+        }).description("噪声设置"),
 
         DATA_ENCHANCEMENT: Schema.object({
             color_aug: Schema.boolean().description("颜色改变"),
