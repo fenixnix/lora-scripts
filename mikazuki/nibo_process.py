@@ -39,4 +39,4 @@ def run_train(toml_path: str,
                 customize_env["USE_LIBUV"] = "0"
                 args[3:3] = ["--rdzv_backend", "c10d"]
 
-    subprocess.Popen(args, env=customize_env)
+    return subprocess.Popen(args, env=customize_env)
