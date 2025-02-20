@@ -29,11 +29,11 @@ class LoraTrain:
     def train_task(self,task_uid,task_file):
         self.current_task_uid = task_uid
         self.train(task_file)
-        self.state = "busy"
 
 
     def train(self,toml_file):
         self.process = nibo_process.run_train(toml_file,"./scripts/stable/sdxl_train_network.py")
+        self.state = "busy"
         return {"status": "Training started"}
 
     def check_status(self):
@@ -54,20 +54,20 @@ lora_tain = LoraTrain()
 
 def train(toml_file):
     lora_tain.train(toml_file)
-    return {"status": "Training started"}
+    return "Training started"
 
 def check_status():
     return lora_tain.check_status()
 
 with gr.Blocks(title="Nibo Train") as webapp:
-    input = gr.Textbox(label="Toml File"),
+    file_path = gr.Textbox(label="Toml File")
     with gr.Row():
         btn_train = gr.Button("Train",interactive=True)
         btn_queue = gr.Button("Queue",interactive=True)
-    output = gr.Textbox(label="Status"),
+    output = gr.Textbox(label="Status")
 
-    btn_train.click(train, inputs=input, outputs=output)
-    btn_queue.click(check_status,outputs=output)
+    btn_train.click(train,inputs=[file_path],outputs=[output])
+    btn_queue.click(check_status,outputs=[output])
 
 
 webapp.launch(
