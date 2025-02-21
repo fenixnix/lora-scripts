@@ -1,19 +1,11 @@
 import gradio as gr
 from fastapi import FastAPI
+import uvicorn
+
 from mikazuki import nibo_process
 
-# app = FastAPI()
 
-# @app.get("/")
-# def read_root():
-#     return {"Train": "Lora"}
 
-# @app.post("/train/{toml_file}")
-# def train(toml_file):
-#     nibo_process.run_train(toml_file,"./scripts/stable/sdxl_train_network.py")
-#     return {"status": "Training started"}
-
-# app.run(host="0.0.0.0", port=8000)
 
 class LoraTrain:
     process = None
@@ -50,9 +42,26 @@ class LoraTrain:
         return {"uuid": self.current_task_uid,"state": self.state ,"return_code": self.return_code}
 
 
+
 lora_tain = LoraTrain()
 
+app = FastAPI()
+
+@app.get("/")
+def read_root():
+    return {"Train": "Lora"}
+
+@app.get("/check/")
+def api_check():
+    return check_status()
+
+@app.post("/train/")
+def api_train(toml_file):
+    train(toml_file)
+    return {"status": "Training started"}
+
 def train(toml_file):
+    print(toml_file)
     lora_tain.train(toml_file)
     return "Training started"
 
@@ -69,8 +78,8 @@ with gr.Blocks(title="Nibo Train") as webapp:
     btn_train.click(train,inputs=[file_path],outputs=[output])
     btn_queue.click(check_status,outputs=[output])
 
+app = gr.mount_gradio_app(app,webapp,path="/gradio")
+print(app)
 
-webapp.launch(
-    server_name="0.0.0.0",
-    server_port=8000,
-)
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8000, reload=True)
